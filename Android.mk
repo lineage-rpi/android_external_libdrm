@@ -55,6 +55,7 @@ include $(BUILD_STATIC_LIBRARY)
 # Shared library for the device
 include $(CLEAR_VARS)
 LOCAL_MODULE := libdrm
+LOCAL_VENDOR_MODULE := true
 
 LOCAL_SRC_FILES := $(LIBDRM_FILES)
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
