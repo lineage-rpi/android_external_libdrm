@@ -21,7 +21,7 @@
 project(
   'libdrm',
   ['c'],
-  version : '2.4.100',
+  version : '2.4.102',
   license : 'MIT',
   meson_version : '>= 0.43',
   default_options : ['buildtype=debugoptimized', 'c_std=gnu99'],
@@ -183,13 +183,23 @@ else
   dep_rt = []
 endif
 dep_m = cc.find_library('m', required : false)
-# From Niclas Zeising:
-# FreeBSD requires sys/types.h for sys/sysctl.h, add it as part of the
-# includes when checking for headers.
-foreach header : ['sys/sysctl.h', 'sys/select.h', 'alloca.h']
+
+# The header is not required on Linux, and is in fact deprecated in glibc 2.30+
+if ['linux'].contains(host_machine.system())
+  config.set10('HAVE_SYS_SYSCTL_H', false)
+else
+  # From Niclas Zeising:
+  # FreeBSD requires sys/types.h for sys/sysctl.h, so add it as part of
+  # the includes when checking for headers.
+  config.set10('HAVE_SYS_SYSCTL_H',
+    cc.compiles('#include <sys/types.h>\n#include <sys/sysctl.h>', name : 'sys/sysctl.h works'))
+endif
+
+foreach header : ['sys/select.h', 'alloca.h']
   config.set10('HAVE_' + header.underscorify().to_upper(),
-    cc.compiles('#include <sys/types.h>\n#include <@0@>'.format(header), name : '@0@ works'.format(header)))
+    cc.compiles('#include <@0@>'.format(header), name : '@0@ works'.format(header)))
 endforeach
+
 if (cc.has_header_symbol('sys/sysmacros.h', 'major') and
   cc.has_header_symbol('sys/sysmacros.h', 'minor') and
   cc.has_header_symbol('sys/sysmacros.h', 'makedev'))
@@ -239,7 +249,11 @@ else
 endif
 _valgrind = get_option('valgrind')
 if _valgrind != 'false'
-  dep_valgrind = dependency('valgrind', required : _valgrind == 'true')
+  if with_freedreno
+    dep_valgrind = dependency('valgrind', required : _valgrind == 'true', version : '>=3.10.0')
+  else
+    dep_valgrind = dependency('valgrind', required : _valgrind == 'true')
+  endif
   with_valgrind = dep_valgrind.found()
 else
   dep_valgrind = []
